@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dominó 1v1 - vs IA</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            background-color: #0f172a;
+            color: #ffffff;
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 100vh;
+            padding: 10px;
+        }
+
+        /* Cabecera / Info de la IA */
+        header {
+            width: 100%;
+            max-width: 400px;
+            background-color: #1e293b;
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .ai-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .avatar {
+            width: 32px;
+            height: 32px;
+            background-color: #3b82f6;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+        }
+
+        /* Mesa de Juego */
+        #board-container {
+            width: 100%;
+            max-width: 400px;
+            height: 360px;
+            background-color: #064e3b;
+            border: 4px solid #047857;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            overflow-x: auto;
+            padding: 15px;
+            gap: 4px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        /* Render de Ficha de Dominó */
+        .tile {
+            min-width: 36px;
+            height: 70px;
+            background-color: #f8fafc;
+            color: #0f172a;
+            border: 2px solid #cbd5e1;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            align-items: center;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.3);
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+
+        .tile:active {
+            transform: scale(0.92);
+        }
+
+        .tile.horizontal {
+            min-width: 70px;
+            height: 36px;
+            flex-direction: row;
+        }
+
+        .tile-divider {
+            width: 80%;
+            height: 2px;
+            background-color: #94a3b8;
+        }
+
+        .tile.horizontal .tile-divider {
+            width: 2px;
+            height: 80%;
+        }
+
+        /* Ficha oculta de la IA */
+        .tile.hidden {
+            background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+            border-color: #475569;
+        }
+
+        /* Controles e Indicador de Estado */
+        #status-bar {
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            color: #38bdf8;
+            margin: 8px 0;
+        }
+
+        /* Mano del Jugador */
+        #player-hand {
+            width: 100%;
+            max-width: 400px;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            background-color: #1e293b;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        .action-btn {
+            background-color: #eab308;
+            color: #0f172a;
+            border: none;
+            padding: 8px 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Cabecera / Info IA -->
+    <header>
+        <div class="ai-info">
+            <div class="avatar">🤖</div>
+            <span>Rival IA</span>
+        </div>
+        <div>Fichas: <span id="ai-count">7</span></div>
+    </header>
+
+    <!-- Estado del juego -->
+    <div id="status-bar">Cargando partida...</div>
+
+    <!-- Mesa de Juego (Mesa verde) -->
+    <div id="board-container"></div>
+
+    <!-- Mano del Jugador -->
+    <div>
+        <div id="player-hand"></div>
+        <div style="text-align: center;">
+            <button id="draw-btn" class="action-btn" style="display: none;">Robar / Pasar</button>
+            <button id="restart-btn" class="action-btn" style="background-color: #22c55e; color: white;">Nueva Partida</button>
+        </div>
+    </div>
+
+    <!-- Carga del Motor y Renderizado -->
+    <script src="js/domino.js"></script>
+    <script>
+        let game = null;
+
+        function renderTileUI(tile, isHorizontal = false) {
+            const div = document.createElement('div');
+            div.className = `tile ${isHorizontal ? 'horizontal' : ''}`;
+            div.innerHTML = `
+                <span>${tile.left}</span>
+                <div class="tile-divider"></div>
+                <span>${tile.right}</span>
+            `;
+            return div;
+        }
+
+        function render() {
+            if (!game) return;
+
+            // 1. Actualizar barra de estado
+            document.getElementById('status-bar').textContent = game.statusMessage;
+            document.getElementById('ai-count').textContent = game.aiHand.length;
+
+            // 2. Renderizar mesa de juego
+            const boardContainer = document.getElementById('board-container');
+            boardContainer.innerHTML = '';
+            game.board.forEach(tile => {
+                boardContainer.appendChild(renderTileUI(tile, true));
+            });
+            // Auto scroll a la derecha para ver las últimas fichas jugadas
+            boardContainer.scrollLeft = boardContainer.scrollWidth;
+
+            // 3. Renderizar mano del jugador
+            const playerHandContainer = document.getElementById('player-hand');
+            playerHandContainer.innerHTML = '';
+
+            const validMoves = game.getValidMoves(game.playerHand);
+
+            game.playerHand.forEach((tile, index) => {
+                const tileElem = renderTileUI(tile, false);
+                
+                // Resaltar o dar clic si es jugada válida
+                if (game.turn === 'player' && !game.gameOver) {
+                    const canPlay = validMoves.some(m => m.index === index);
+                    if (canPlay) {
+                        tileElem.style.border = '2px solid #22c55e';
+                        tileElem.addEventListener('click', () => {
+                            // Buscar el lado correcto para jugar
+                            const move = validMoves.find(m => m.index === index);
+                            game.playTile('player', index, move.side === 'any' ? 'right' : move.side);
+                            render();
+                        });
+                    } else {
+                        tileElem.style.opacity = '0.5';
+                    }
+                }
+
+                playerHandContainer.appendChild(tileElem);
+            });
+
+            // 4. Mostrar u ocultar botón de robar/pasar
+            const drawBtn = document.getElementById('draw-btn');
+            if (game.turn === 'player' && validMoves.length === 0 && !game.gameOver) {
+                drawBtn.style.display = 'inline-block';
+                drawBtn.textContent = game.deck.length > 0 ? `Robar de la sopa (${game.deck.length})` : "Pasar Turno";
+            } else {
+                drawBtn.style.display = 'none';
+            }
+        }
+
+        // Inicializar evento de botones
+        document.getElementById('draw-btn').addEventListener('click', () => {
+            if (game && game.turn === 'player') {
+                game.passOrDraw('player');
+                render();
+            }
+        });
+
+        document.getElementById('restart-btn').addEventListener('click', () => {
+            game = new DominoGame();
+            render();
+        });
+
+        // Arrancar juego al cargar la página
+        window.addEventListener('DOMContentLoaded', () => {
+            game = new DominoGame();
+            render();
+        });
+    </script>
+</body>
+</html>
