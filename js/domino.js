@@ -1,6 +1,6 @@
 // =================================================================
-// ARCHIVO: js/domino.js (COMPLETO Y CORREGIDO)
-// Lógica de Dominó 1v1 vs IA
+// ARCHIVO: js/domino.js (COMPLETO Y SEGURO)
+// Lógica de Dominó 1v1 vs IA con Control de Errores
 // =================================================================
 
 class DominoGame {
@@ -100,16 +100,22 @@ class DominoGame {
 
     getPlayableMoves(hand) {
         if (this.board.length === 0) {
-            return hand.map((tile, index) => ({ index, side: 'first', tile }));
+            return hand.map((tile, index) => ({ index, side: 'first', tile: { a: tile.a, b: tile.b } }));
         }
 
         const moves = [];
         hand.forEach((tile, index) => {
-            if (tile.a === this.leftVal) moves.push({ index, side: 'left', tile: { a: tile.b, b: tile.a } });
-            else if (tile.b === this.leftVal) moves.push({ index, side: 'left', tile: { a: tile.a, b: tile.b } });
+            if (tile.a === this.leftVal) {
+                moves.push({ index, side: 'left', tile: { a: tile.b, b: tile.a } });
+            } else if (tile.b === this.leftVal) {
+                moves.push({ index, side: 'left', tile: { a: tile.a, b: tile.b } });
+            }
 
-            if (tile.a === this.rightVal) moves.push({ index, side: 'right', tile: { a: tile.a, b: tile.b } });
-            else if (tile.b === this.rightVal) moves.push({ index, side: 'right', tile: { a: tile.b, b: tile.a } });
+            if (tile.a === this.rightVal) {
+                moves.push({ index, side: 'right', tile: { a: tile.a, b: tile.b } });
+            } else if (tile.b === this.rightVal) {
+                moves.push({ index, side: 'right', tile: { a: tile.b, b: tile.a } });
+            }
         });
 
         return moves;
@@ -138,9 +144,7 @@ class DominoGame {
         if (moves.length === 0) return;
 
         const move = moves[0];
-        // Ajustamos el lado si es necesario según la jugada real
-        let targetSide = move.side;
-        if (this.board.length === 0) targetSide = 'first';
+        const targetSide = this.board.length === 0 ? 'first' : move.side;
 
         this.playTile(move.tile, targetSide);
         this.playerHand.splice(handIndex, 1);
@@ -151,34 +155,43 @@ class DominoGame {
         this.updateUI();
         this.setStatus('Turno de la IA...');
 
-        setTimeout(() => this.aiTurn(), 800);
+        setTimeout(() => this.aiTurn(), 600);
     }
 
     aiTurn() {
         if (this.gameOver) return;
 
-        let moves = this.getPlayableMoves(this.aiHand);
+        try {
+            let moves = this.getPlayableMoves(this.aiHand);
 
-        while (moves.length === 0 && this.deck.length > 0) {
-            this.aiHand.push(this.deck.pop());
-            moves = this.getPlayableMoves(this.aiHand);
-        }
+            // Si la IA no puede jugar y quedan fichas, roba de la sopa
+            while (moves.length === 0 && this.deck.length > 0) {
+                this.aiHand.push(this.deck.pop());
+                moves = this.getPlayableMoves(this.aiHand);
+            }
 
-        if (moves.length > 0) {
-            // Usamos directamente el índice seguro de la jugada
-            const move = moves[0];
-            this.playTile(move.tile, this.board.length === 0 ? 'first' : move.side);
-            this.aiHand.splice(move.index, 1);
+            if (moves.length > 0) {
+                const move = moves[0];
+                const sideToPlay = this.board.length === 0 ? 'first' : move.side;
+                
+                this.playTile(move.tile, sideToPlay);
+                this.aiHand.splice(move.index, 1);
 
-            if (this.checkWin(this.aiHand, '🤖 La IA ha ganado.')) return;
+                if (this.checkWin(this.aiHand, '🤖 La IA ha ganado.')) return;
+                this.setStatus('Tu turno.');
+            } else {
+                this.setStatus('La IA pasó. Tu turno.');
+            }
+
+            this.isPlayerTurn = true;
+            this.checkBlock();
+            this.updateUI();
+        } catch (error) {
+            console.error("Error en el turno de la IA:", error);
             this.setStatus('Tu turno.');
-        } else {
-            this.setStatus('La IA pasó. Tu turno.');
+            this.isPlayerTurn = true;
+            this.updateUI();
         }
-
-        this.isPlayerTurn = true;
-        this.checkBlock();
-        this.updateUI();
     }
 
     handlePassOrDraw() {
@@ -191,7 +204,7 @@ class DominoGame {
             this.isPlayerTurn = false;
             this.setStatus('Pasaste el turno. Juega la IA...');
             this.updateUI();
-            setTimeout(() => this.aiTurn(), 800);
+            setTimeout(() => this.aiTurn(), 600);
         }
     }
 
