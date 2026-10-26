@@ -1,253 +1,596 @@
-// =================================================================
-// ARCHIVO: js/domino.js (COMPLETO Y SEGURO)
-// Lógica de Dominó 1v1 vs IA con Control de Errores
-// =================================================================
+// ============================================================
+// DOMINÓ CLÁSICO DOBLE-SEIS
+// 1 vs 1
+// 28 fichas
+// 7 fichas por jugador
+// ============================================================
 
-class DominoGame {
-    constructor() {
-        this.deck = [];
-        this.playerHand = [];
-        this.aiHand = [];
-        this.board = [];
-        this.leftVal = null;
-        this.rightVal = null;
-        this.isPlayerTurn = true;
-        this.gameOver = false;
+const playerHandElement = document.getElementById("playerHand");
+const botHandElement = document.getElementById("botHand");
+const boardElement = document.getElementById("board");
 
-        this.initDOM();
-        this.startNewGame();
-    }
+const statusElement = document.getElementById("status");
 
-    initDOM() {
-        this.boardEl = document.getElementById('board');
-        this.playerHandEl = document.getElementById('player-hand');
-        this.aiCountEl = document.getElementById('ai-count');
-        this.statusEl = document.getElementById('status-msg');
-        this.btnPass = document.getElementById('btn-pass');
+const playerCountElement = document.getElementById("playerCount");
+const botCountElement = document.getElementById("botCount");
 
-        this.btnPass.addEventListener('click', () => this.handlePassOrDraw());
-    }
+const newGameButton = document.getElementById("newGame");
 
-    startNewGame() {
-        // 1. Generar las 28 fichas (0-0 a 6-6)
-        this.deck = [];
-        for (let i = 0; i <= 6; i++) {
-            for (let j = i; j <= 6; j++) {
-                this.deck.push({ a: i, b: j });
-            }
+// ------------------------------------------------------------
+// ESTADO DEL JUEGO
+// ------------------------------------------------------------
+
+let playerHand = [];
+let botHand = [];
+
+let boneyard = [];
+
+let board = [];
+
+let currentTurn = "player";
+
+let gameOver = false;
+
+
+// ------------------------------------------------------------
+// CREAR LAS 28 FICHAS
+// ------------------------------------------------------------
+
+function createDominoSet() {
+
+    const tiles = [];
+
+    for (let a = 0; a <= 6; a++) {
+
+        for (let b = a; b <= 6; b++) {
+
+            tiles.push({
+                a: a,
+                b: b,
+                id: `${a}-${b}`
+            });
+
         }
 
-        // 2. Barajar
-        this.deck.sort(() => Math.random() - 0.5);
-
-        // 3. Repartir 7 fichas a cada uno
-        this.playerHand = this.deck.splice(0, 7);
-        this.aiHand = this.deck.splice(0, 7);
-
-        this.board = [];
-        this.leftVal = null;
-        this.rightVal = null;
-        this.gameOver = false;
-        this.isPlayerTurn = true;
-
-        this.updateUI();
-        this.setStatus('¡Comienza el juego! Tu turno.');
     }
 
-    renderBoard() {
-        this.boardEl.innerHTML = '';
-        this.board.forEach(tile => {
-            const tileEl = document.createElement('div');
-            tileEl.className = 'tile horizontal';
-            tileEl.innerHTML = `
-                <div class="tile-half">${tile.a}</div>
-                <div class="divider-v"></div>
-                <div class="tile-half">${tile.b}</div>
-            `;
-            this.boardEl.appendChild(tileEl);
-        });
-    }
-
-    renderPlayerHand() {
-        this.playerHandEl.innerHTML = '';
-        const playableMoves = this.getPlayableMoves(this.playerHand);
-
-        this.playerHand.forEach((tile, index) => {
-            const tileEl = document.createElement('div');
-            tileEl.className = 'tile';
-
-            const canPlay = playableMoves.some(m => m.index === index);
-            if (canPlay && this.isPlayerTurn && !this.gameOver) {
-                tileEl.classList.add('playable');
-                tileEl.addEventListener('click', () => this.playPlayerTile(index));
-            }
-
-            tileEl.innerHTML = `
-                <div class="tile-half">${tile.a}</div>
-                <div class="divider"></div>
-                <div class="tile-half">${tile.b}</div>
-            `;
-            this.playerHandEl.appendChild(tileEl);
-        });
-
-        if (this.isPlayerTurn && !this.gameOver) {
-            this.btnPass.disabled = playableMoves.length > 0;
-            this.btnPass.innerText = this.deck.length > 0 ? `Robar (${this.deck.length})` : 'Pasar';
-        } else {
-            this.btnPass.disabled = true;
-        }
-    }
-
-    getPlayableMoves(hand) {
-        if (this.board.length === 0) {
-            return hand.map((tile, index) => ({ index, side: 'first', tile: { a: tile.a, b: tile.b } }));
-        }
-
-        const moves = [];
-        hand.forEach((tile, index) => {
-            if (tile.a === this.leftVal) {
-                moves.push({ index, side: 'left', tile: { a: tile.b, b: tile.a } });
-            } else if (tile.b === this.leftVal) {
-                moves.push({ index, side: 'left', tile: { a: tile.a, b: tile.b } });
-            }
-
-            if (tile.a === this.rightVal) {
-                moves.push({ index, side: 'right', tile: { a: tile.a, b: tile.b } });
-            } else if (tile.b === this.rightVal) {
-                moves.push({ index, side: 'right', tile: { a: tile.b, b: tile.a } });
-            }
-        });
-
-        return moves;
-    }
-
-    playTile(tileObj, side) {
-        if (side === 'first') {
-            this.board.push(tileObj);
-            this.leftVal = tileObj.a;
-            this.rightVal = tileObj.b;
-        } else if (side === 'left') {
-            this.board.unshift(tileObj);
-            this.leftVal = tileObj.a;
-        } else if (side === 'right') {
-            this.board.push(tileObj);
-            this.rightVal = tileObj.b;
-        }
-    }
-
-    playPlayerTile(handIndex) {
-        if (!this.isPlayerTurn || this.gameOver) return;
-
-        const tile = this.playerHand[handIndex];
-        const moves = this.getPlayableMoves([tile]);
-
-        if (moves.length === 0) return;
-
-        const move = moves[0];
-        const targetSide = this.board.length === 0 ? 'first' : move.side;
-
-        this.playTile(move.tile, targetSide);
-        this.playerHand.splice(handIndex, 1);
-
-        if (this.checkWin(this.playerHand, '👤 ¡Ganaste la partida!')) return;
-
-        this.isPlayerTurn = false;
-        this.updateUI();
-        this.setStatus('Turno de la IA...');
-
-        setTimeout(() => this.aiTurn(), 600);
-    }
-
-    aiTurn() {
-        if (this.gameOver) return;
-
-        try {
-            let moves = this.getPlayableMoves(this.aiHand);
-
-            // Si la IA no puede jugar y quedan fichas, roba de la sopa
-            while (moves.length === 0 && this.deck.length > 0) {
-                this.aiHand.push(this.deck.pop());
-                moves = this.getPlayableMoves(this.aiHand);
-            }
-
-            if (moves.length > 0) {
-                const move = moves[0];
-                const sideToPlay = this.board.length === 0 ? 'first' : move.side;
-                
-                this.playTile(move.tile, sideToPlay);
-                this.aiHand.splice(move.index, 1);
-
-                if (this.checkWin(this.aiHand, '🤖 La IA ha ganado.')) return;
-                this.setStatus('Tu turno.');
-            } else {
-                this.setStatus('La IA pasó. Tu turno.');
-            }
-
-            this.isPlayerTurn = true;
-            this.checkBlock();
-            this.updateUI();
-        } catch (error) {
-            console.error("Error en el turno de la IA:", error);
-            this.setStatus('Tu turno.');
-            this.isPlayerTurn = true;
-            this.updateUI();
-        }
-    }
-
-    handlePassOrDraw() {
-        if (!this.isPlayerTurn || this.gameOver) return;
-
-        if (this.deck.length > 0) {
-            this.playerHand.push(this.deck.pop());
-            this.updateUI();
-        } else {
-            this.isPlayerTurn = false;
-            this.setStatus('Pasaste el turno. Juega la IA...');
-            this.updateUI();
-            setTimeout(() => this.aiTurn(), 600);
-        }
-    }
-
-    checkWin(hand, msg) {
-        if (hand.length === 0) {
-            this.gameOver = true;
-            this.setStatus(msg);
-            this.updateUI();
-            return true;
-        }
-        return false;
-    }
-
-    checkBlock() {
-        const playerMoves = this.getPlayableMoves(this.playerHand);
-        const aiMoves = this.getPlayableMoves(this.aiHand);
-
-        if (playerMoves.length === 0 && aiMoves.length === 0 && this.deck.length === 0) {
-            this.gameOver = true;
-            const playerPoints = this.playerHand.reduce((sum, t) => sum + t.a + t.b, 0);
-            const aiPoints = this.aiHand.reduce((sum, t) => sum + t.a + t.b, 0);
-
-            if (playerPoints < aiPoints) {
-                this.setStatus(`¡Juego Trancado! Ganaste por puntos (${playerPoints} vs ${aiPoints}).`);
-            } else if (aiPoints < playerPoints) {
-                this.setStatus(`Juego Trancado. Ganó la IA por puntos (${aiPoints} vs ${playerPoints}).`);
-            } else {
-                this.setStatus('¡Juego Trancado! Empate en puntos.');
-            }
-        }
-    }
-
-    setStatus(msg) {
-        this.statusEl.innerText = msg;
-    }
-
-    updateUI() {
-        this.aiCountEl.innerText = this.aiHand.length;
-        this.renderBoard();
-        this.renderPlayerHand();
-    }
+    return tiles;
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-    new DominoGame();
-});
+
+// ------------------------------------------------------------
+// BARAJAR
+// ------------------------------------------------------------
+
+function shuffle(array) {
+
+    for (let i = array.length - 1; i > 0; i--) {
+
+        const j = Math.floor(Math.random() * (i + 1));
+
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+
+    return array;
+}
+
+
+// ------------------------------------------------------------
+// INICIAR PARTIDA
+// ------------------------------------------------------------
+
+function startGame() {
+
+    gameOver = false;
+
+    board = [];
+
+    currentTurn = "player";
+
+    let tiles = createDominoSet();
+
+    shuffle(tiles);
+
+    playerHand = tiles.splice(0, 7);
+
+    botHand = tiles.splice(0, 7);
+
+    boneyard = tiles;
+
+    render();
+
+    statusElement.textContent = "Tu turno. Elige una ficha.";
+
+}
+
+
+// ------------------------------------------------------------
+// RENDERIZAR TODO
+// ------------------------------------------------------------
+
+function render() {
+
+    renderPlayerHand();
+
+    renderBotHand();
+
+    renderBoard();
+
+    playerCountElement.textContent = playerHand.length;
+
+    botCountElement.textContent = botHand.length;
+}
+
+
+// ------------------------------------------------------------
+// MOSTRAR FICHAS DEL JUGADOR
+// ------------------------------------------------------------
+
+function renderPlayerHand() {
+
+    playerHandElement.innerHTML = "";
+
+    playerHand.forEach((tile, index) => {
+
+        const element = createTileElement(tile);
+
+        element.addEventListener("click", () => {
+
+            if (gameOver) return;
+
+            if (currentTurn !== "player") return;
+
+            playPlayerTile(index);
+
+        });
+
+        playerHandElement.appendChild(element);
+
+    });
+
+}
+
+
+// ------------------------------------------------------------
+// MOSTRAR FICHAS DEL BOT
+// ------------------------------------------------------------
+
+function renderBotHand() {
+
+    botHandElement.innerHTML = "";
+
+    botHand.forEach(() => {
+
+        const element = document.createElement("div");
+
+        element.className = "domino hidden-domino";
+
+        element.innerHTML = `
+            <div class="domino-half"></div>
+            <div class="domino-half"></div>
+        `;
+
+        botHandElement.appendChild(element);
+
+    });
+
+}
+
+
+// ------------------------------------------------------------
+// CREAR ELEMENTO VISUAL DE FICHA
+// ------------------------------------------------------------
+
+function createTileElement(tile) {
+
+    const element = document.createElement("div");
+
+    element.className = "domino";
+
+    element.innerHTML = `
+        <div class="domino-half">${tile.a}</div>
+        <div class="domino-half">${tile.b}</div>
+    `;
+
+    return element;
+}
+
+
+// ------------------------------------------------------------
+// MOSTRAR MESA
+// ------------------------------------------------------------
+
+function renderBoard() {
+
+    boardElement.innerHTML = "";
+
+    if (board.length === 0) {
+
+        boardElement.innerHTML =
+            `<div class="empty-board">La mesa está vacía</div>`;
+
+        return;
+    }
+
+    board.forEach(tile => {
+
+        const element = createTileElement(tile);
+
+        boardElement.appendChild(element);
+
+    });
+
+}
+
+
+// ------------------------------------------------------------
+// EXTREMOS DE LA MESA
+// ------------------------------------------------------------
+
+function getBoardEnds() {
+
+    if (board.length === 0) {
+
+        return null;
+    }
+
+    return {
+        left: board[0].a,
+        right: board[board.length - 1].b
+    };
+}
+
+
+// ------------------------------------------------------------
+// ¿PUEDE JUGARSE UNA FICHA?
+// ------------------------------------------------------------
+
+function canPlayTile(tile) {
+
+    if (board.length === 0) {
+
+        return true;
+    }
+
+    const ends = getBoardEnds();
+
+    return (
+        tile.a === ends.left ||
+        tile.b === ends.left ||
+        tile.a === ends.right ||
+        tile.b === ends.right
+    );
+}
+
+
+// ------------------------------------------------------------
+// JUGADA DEL JUGADOR
+// ------------------------------------------------------------
+
+function playPlayerTile(index) {
+
+    const tile = playerHand[index];
+
+    if (!canPlayTile(tile)) {
+
+        statusElement.textContent =
+            "Esa ficha no se puede jugar ahora.";
+
+        return;
+    }
+
+    playerHand.splice(index, 1);
+
+    placeTile(tile);
+
+    render();
+
+    if (checkWinner()) return;
+
+    currentTurn = "bot";
+
+    statusElement.textContent = "El bot está pensando...";
+
+    setTimeout(botTurn, 700);
+
+}
+
+
+// ------------------------------------------------------------
+// COLOCAR FICHA EN LA MESA
+// ------------------------------------------------------------
+
+function placeTile(tile) {
+
+    if (board.length === 0) {
+
+        board.push({
+            a: tile.a,
+            b: tile.b
+        });
+
+        return;
+    }
+
+    const ends = getBoardEnds();
+
+    // Intentar colocar en la izquierda
+    if (tile.b === ends.left) {
+
+        board.unshift({
+            a: tile.a,
+            b: tile.b
+        });
+
+        return;
+    }
+
+    if (tile.a === ends.left) {
+
+        board.unshift({
+            a: tile.b,
+            b: tile.a
+        });
+
+        return;
+    }
+
+    // Intentar colocar en la derecha
+    if (tile.a === ends.right) {
+
+        board.push({
+            a: tile.a,
+            b: tile.b
+        });
+
+        return;
+    }
+
+    if (tile.b === ends.right) {
+
+        board.push({
+            a: tile.b,
+            b: tile.a
+        });
+
+        return;
+    }
+
+}
+
+
+// ------------------------------------------------------------
+// TURNO DEL BOT
+// ------------------------------------------------------------
+
+function botTurn() {
+
+    if (gameOver) return;
+
+    let playable = [];
+
+    botHand.forEach((tile, index) => {
+
+        if (canPlayTile(tile)) {
+
+            playable.push({
+                tile: tile,
+                index: index
+            });
+
+        }
+
+    });
+
+
+    // --------------------------------------------------------
+    // SI NO PUEDE JUGAR
+    // --------------------------------------------------------
+
+    if (playable.length === 0) {
+
+        if (boneyard.length > 0) {
+
+            const drawn = boneyard.pop();
+
+            botHand.push(drawn);
+
+            render();
+
+            statusElement.textContent =
+                "El bot roba una ficha.";
+
+            setTimeout(botTurn, 600);
+
+            return;
+        }
+
+        // No puede jugar y no quedan fichas para robar
+        statusElement.textContent =
+            "El bot pasa.";
+
+        currentTurn = "player";
+
+        checkBlockedGame();
+
+        if (!gameOver) {
+
+            statusElement.textContent =
+                "Tu turno.";
+
+        }
+
+        return;
+    }
+
+
+    // --------------------------------------------------------
+    // ELEGIR JUGADA
+    // --------------------------------------------------------
+
+    const chosen = chooseBotMove(playable);
+
+    botHand.splice(chosen.index, 1);
+
+    placeTile(chosen.tile);
+
+    render();
+
+    if (checkWinner()) return;
+
+    currentTurn = "player";
+
+    statusElement.textContent =
+        "Tu turno.";
+
+    checkBlockedGame();
+
+}
+
+
+// ------------------------------------------------------------
+// ESTRATEGIA BÁSICA DEL BOT
+// ------------------------------------------------------------
+
+function chooseBotMove(playable) {
+
+    /*
+        Primera estrategia:
+
+        1. Preferir dobles.
+        2. Si no, jugar la ficha con mayor cantidad de puntos.
+
+        Más adelante reemplazaremos esta función por
+        el verdadero motor estratégico.
+    */
+
+    playable.sort((x, y) => {
+
+        const xDouble = x.tile.a === x.tile.b;
+        const yDouble = y.tile.a === y.tile.b;
+
+        if (xDouble && !yDouble) return -1;
+
+        if (!xDouble && yDouble) return 1;
+
+        const xValue = x.tile.a + x.tile.b;
+        const yValue = y.tile.a + y.tile.b;
+
+        return yValue - xValue;
+
+    });
+
+    return playable[0];
+}
+
+
+// ------------------------------------------------------------
+// COMPROBAR GANADOR
+// ------------------------------------------------------------
+
+function checkWinner() {
+
+    if (playerHand.length === 0) {
+
+        endGame("🎉 ¡Ganaste la partida!");
+
+        return true;
+    }
+
+    if (botHand.length === 0) {
+
+        endGame("🤖 El bot ganó la partida.");
+
+        return true;
+    }
+
+    return false;
+}
+
+
+// ------------------------------------------------------------
+// DETECTAR PARTIDA BLOQUEADA
+// ------------------------------------------------------------
+
+function checkBlockedGame() {
+
+    if (boneyard.length > 0) {
+
+        return;
+    }
+
+    const playerCanPlay =
+        playerHand.some(tile => canPlayTile(tile));
+
+    const botCanPlay =
+        botHand.some(tile => canPlayTile(tile));
+
+    if (!playerCanPlay && !botCanPlay) {
+
+        let playerPoints = calculatePoints(playerHand);
+        let botPoints = calculatePoints(botHand);
+
+        if (playerPoints < botPoints) {
+
+            endGame(
+                `🔒 Partida bloqueada. Ganaste por puntos (${playerPoints} vs ${botPoints}).`
+            );
+
+        } else if (botPoints < playerPoints) {
+
+            endGame(
+                `🔒 Partida bloqueada. El bot gana por puntos (${botPoints} vs ${playerPoints}).`
+            );
+
+        } else {
+
+            endGame(
+                `🔒 Partida bloqueada. Empate (${playerPoints} - ${botPoints}).`
+            );
+
+        }
+
+    }
+
+}
+
+
+// ------------------------------------------------------------
+// CONTAR PUNTOS
+// ------------------------------------------------------------
+
+function calculatePoints(hand) {
+
+    return hand.reduce(
+        (total, tile) => total + tile.a + tile.b,
+        0
+    );
+
+}
+
+
+// ------------------------------------------------------------
+// TERMINAR PARTIDA
+// ------------------------------------------------------------
+
+function endGame(message) {
+
+    gameOver = true;
+
+    statusElement.textContent = message;
+
+}
+
+
+// ------------------------------------------------------------
+// NUEVA PARTIDA
+// ------------------------------------------------------------
+
+newGameButton.addEventListener("click", startGame);
+
+
+// ------------------------------------------------------------
+// ARRANCAR
+// ------------------------------------------------------------
+
+startGame();
