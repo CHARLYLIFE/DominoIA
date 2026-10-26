@@ -2,18 +2,13 @@
 
 /*
 ============================================================
-DOMINÓ CLÁSICO DOBLE-SEIS
-1 VS 1
-28 FICHAS TOTALES
-7 PARA EL JUGADOR
-7 PARA EL BOT
-14 QUEDAN FUERA
+DOMINÓ DOBLE-SEIS — 1 VS 1
+7 fichas por jugador
+SIN ROBO
 
-NO EXISTE ROBO.
-
-SI NO PUEDES JUGAR:
-PASAS.
-
+Esta versión utiliza una mesa real:
+las fichas se organizan como una cadena,
+creciendo desde el centro hacia ambos lados.
 ============================================================
 */
 
@@ -117,7 +112,7 @@ function shuffle(array) {
 
 
 // ============================================================
-// INICIAR PARTIDA
+// NUEVA PARTIDA
 // ============================================================
 
 function startGame() {
@@ -131,7 +126,7 @@ function startGame() {
     botPassed = false;
 
 
-    let tiles =
+    const tiles =
         shuffle(createDominoSet());
 
 
@@ -144,10 +139,7 @@ function startGame() {
         tiles.splice(0, 7);
 
 
-    // LAS OTRAS 14 NO PARTICIPAN
-
-
-    // Determinar quién empieza
+    // DETERMINAR QUIÉN EMPIEZA
 
     const playerDouble =
         getHighestDouble(playerHand);
@@ -207,7 +199,7 @@ function startGame() {
     } else {
 
         statusElement.textContent =
-            "El bot empieza...";
+            "🤖 El bot empieza...";
 
         setTimeout(
             botTurn,
@@ -236,6 +228,7 @@ function getHighestDouble(hand) {
             ) {
 
                 highest = tile.a;
+
             }
         }
     }
@@ -246,7 +239,7 @@ function getHighestDouble(hand) {
 
 
 // ============================================================
-// MAYOR VALOR
+// VALOR MÁS ALTO
 // ============================================================
 
 function getHighestValue(hand) {
@@ -263,6 +256,7 @@ function getHighestValue(hand) {
         if (value > highest) {
 
             highest = value;
+
         }
     }
 
@@ -272,7 +266,7 @@ function getHighestValue(hand) {
 
 
 // ============================================================
-// RENDER
+// RENDER GENERAL
 // ============================================================
 
 function render() {
@@ -289,11 +283,14 @@ function render() {
 
     botCountElement.textContent =
         botHand.length;
+
+
+    updatePassButton();
 }
 
 
 // ============================================================
-// RENDER JUGADOR
+// MANO DEL JUGADOR
 // ============================================================
 
 function renderPlayerHand() {
@@ -337,13 +334,14 @@ function renderPlayerHand() {
             playerHandElement.appendChild(
                 element
             );
+
         }
     );
 }
 
 
 // ============================================================
-// RENDER BOT
+// MANO DEL BOT
 // ============================================================
 
 function renderBotHand() {
@@ -404,7 +402,7 @@ function createTileElement(tile) {
 
 
 // ============================================================
-// RENDER MESA
+// MESA
 // ============================================================
 
 function renderBoard() {
@@ -415,21 +413,149 @@ function renderBoard() {
     if (board.length === 0) {
 
         boardElement.innerHTML =
-            `<div class="empty-board">
+            `
+            <div class="empty-board">
                 La mesa está vacía
-             </div>`;
+            </div>
+            `;
 
         return;
     }
 
 
-    board.forEach(tile => {
+    /*
+    ------------------------------------------------------------
+    Construimos la cadena de forma visual.
 
-        boardElement.appendChild(
-            createTileElement(tile)
-        );
+    El primer grupo contiene la ficha central.
+    Después añadimos fichas hacia izquierda y derecha.
 
-    });
+    Para que la mesa no sea una fila infinita,
+    usamos filas visuales.
+    ------------------------------------------------------------
+    */
+
+
+    const maxPerRow =
+        getMaxTilesPerRow();
+
+
+    let rows = [];
+
+    let currentRow = [];
+
+
+    board.forEach(
+        (tile, index) => {
+
+            currentRow.push(tile);
+
+
+            if (
+                currentRow.length >=
+                maxPerRow
+            ) {
+
+                rows.push(currentRow);
+
+                currentRow = [];
+            }
+
+        }
+    );
+
+
+    if (currentRow.length > 0) {
+
+        rows.push(currentRow);
+
+    }
+
+
+    /*
+    Si hay varias filas, mostramos
+    la cadena en bloques.
+    */
+
+    rows.forEach(
+        (row, rowIndex) => {
+
+            const rowElement =
+                document.createElement("div");
+
+
+            rowElement.className =
+                "board-row";
+
+
+            /*
+            Alternamos la dirección visual
+            para dar sensación de recorrido.
+            */
+
+            if (rowIndex % 2 === 1) {
+
+                row.reverse();
+
+            }
+
+
+            row.forEach(
+                tile => {
+
+                    const element =
+                        createTileElement(tile);
+
+
+                    rowElement.appendChild(
+                        element
+                    );
+
+                }
+            );
+
+
+            boardElement.appendChild(
+                rowElement
+            );
+
+        }
+    );
+}
+
+
+// ============================================================
+// CUÁNTAS FICHAS CABEN
+// ============================================================
+
+function getMaxTilesPerRow() {
+
+    const width =
+        boardElement.clientWidth;
+
+
+    if (width < 360) {
+
+        return 5;
+
+    }
+
+
+    if (width < 500) {
+
+        return 7;
+
+    }
+
+
+    if (width < 700) {
+
+        return 9;
+
+    }
+
+
+    return 11;
 }
 
 
@@ -452,6 +578,7 @@ function getBoardEnds() {
 
         right:
             board[board.length - 1].b
+
     };
 }
 
@@ -482,13 +609,12 @@ function canPlayTile(tile) {
 
 
 // ============================================================
-// JUGADA DEL JUGADOR
+// JUGAR FICHA DEL JUGADOR
 // ============================================================
 
 function playPlayerTile(index) {
 
     if (gameOver) return;
-
 
     if (currentTurn !== "player") {
 
@@ -503,7 +629,7 @@ function playPlayerTile(index) {
     if (!canPlayTile(tile)) {
 
         statusElement.textContent =
-            "No puedes jugar esa ficha.";
+            "Esa ficha no puede jugarse.";
 
         return;
     }
@@ -534,7 +660,7 @@ function playPlayerTile(index) {
 
 
     statusElement.textContent =
-        "El bot está pensando...";
+        "🤖 El bot está pensando...";
 
 
     setTimeout(
@@ -550,7 +676,11 @@ function playPlayerTile(index) {
 
 function placeTile(tile) {
 
-    // Primera ficha
+    /*
+    ============================================================
+    PRIMERA FICHA
+    ============================================================
+    */
 
     if (board.length === 0) {
 
@@ -567,15 +697,20 @@ function placeTile(tile) {
         getBoardEnds();
 
 
-    // --------------------------------------------------------
-    // IZQUIERDA
-    // --------------------------------------------------------
+    /*
+    ============================================================
+    IZQUIERDA
+    ============================================================
+    */
 
     if (tile.b === ends.left) {
 
         board.unshift({
+
             a: tile.a,
+
             b: tile.b
+
         });
 
         return;
@@ -585,23 +720,31 @@ function placeTile(tile) {
     if (tile.a === ends.left) {
 
         board.unshift({
+
             a: tile.b,
+
             b: tile.a
+
         });
 
         return;
     }
 
 
-    // --------------------------------------------------------
-    // DERECHA
-    // --------------------------------------------------------
+    /*
+    ============================================================
+    DERECHA
+    ============================================================
+    */
 
     if (tile.a === ends.right) {
 
         board.push({
+
             a: tile.a,
+
             b: tile.b
+
         });
 
         return;
@@ -611,8 +754,11 @@ function placeTile(tile) {
     if (tile.b === ends.right) {
 
         board.push({
+
             a: tile.b,
+
             b: tile.a
+
         });
 
         return;
@@ -621,7 +767,7 @@ function placeTile(tile) {
 
 
 // ============================================================
-// BOT
+// TURNO DEL BOT
 // ============================================================
 
 function botTurn() {
@@ -638,18 +784,24 @@ function botTurn() {
             if (canPlayTile(tile)) {
 
                 playable.push({
+
                     tile: tile,
+
                     index: index
+
                 });
 
             }
+
         }
     );
 
 
-    // --------------------------------------------------------
-    // NO PUEDE JUGAR
-    // --------------------------------------------------------
+    /*
+    ============================================================
+    NO PUEDE JUGAR
+    ============================================================
+    */
 
     if (playable.length === 0) {
 
@@ -660,10 +812,7 @@ function botTurn() {
             "🤖 El bot pasa.";
 
 
-        if (
-            playerPassed &&
-            botPassed
-        ) {
+        if (playerPassed) {
 
             endBlockedGame();
 
@@ -685,9 +834,11 @@ function botTurn() {
     }
 
 
-    // --------------------------------------------------------
-    // ELEGIR JUGADA
-    // --------------------------------------------------------
+    /*
+    ============================================================
+    ELEGIR JUGADA
+    ============================================================
+    */
 
     const chosen =
         chooseBotMove(playable);
@@ -724,7 +875,7 @@ function botTurn() {
 
 
 // ============================================================
-// ESTRATEGIA BÁSICA DEL BOT
+// ESTRATEGIA ACTUAL DEL BOT
 // ============================================================
 
 function chooseBotMove(playable) {
@@ -747,20 +898,23 @@ function chooseBotMove(playable) {
 
         // Dobles
 
-        if (tile.a === tile.b) {
+        if (
+            tile.a ===
+            tile.b
+        ) {
 
             score += 20;
         }
 
 
-        // Valor
+        // Puntos
 
         score +=
             (tile.a + tile.b) * 2;
 
 
-        // Favorecer números
-        // que el bot conserva
+        // Mantener números
+        // que el bot tiene repetidos
 
         score +=
             countNumberInHand(
@@ -776,7 +930,10 @@ function chooseBotMove(playable) {
             ) * 3;
 
 
-        if (score > bestScore) {
+        if (
+            score >
+            bestScore
+        ) {
 
             bestScore =
                 score;
@@ -805,17 +962,20 @@ function countNumberInHand(
 
     for (const tile of hand) {
 
-        if (tile.a === number) {
-
-            count++;
-        }
-
         if (
-            tile.b === number &&
-            tile.a !== number
+            tile.a === number
         ) {
 
             count++;
+
+        }
+
+        else if (
+            tile.b === number
+        ) {
+
+            count++;
+
         }
     }
 
@@ -825,32 +985,33 @@ function countNumberInHand(
 
 
 // ============================================================
-// PASAR JUGADOR
+// PASAR
 // ============================================================
 
 function playerPass() {
 
     if (gameOver) return;
 
-
-    if (currentTurn !== "player") {
+    if (
+        currentTurn !==
+        "player"
+    ) {
 
         return;
     }
 
 
-    // No permitir pasar si sí puede jugar
-
-    const canPlay =
+    const playable =
         playerHand.some(
-            tile => canPlayTile(tile)
+            tile =>
+                canPlayTile(tile)
         );
 
 
-    if (canPlay) {
+    if (playable) {
 
         statusElement.textContent =
-            "Tienes una jugada disponible. No puedes pasar.";
+            "Tienes una jugada disponible.";
 
         return;
     }
@@ -875,15 +1036,48 @@ function playerPass() {
         "bot";
 
 
+    render();
+
+
     setTimeout(
         botTurn,
-        650
+        600
     );
 }
 
 
 // ============================================================
-// COMPROBAR GANADOR
+// BOTÓN PASAR
+// ============================================================
+
+function updatePassButton() {
+
+    if (!passButton) return;
+
+
+    const canPass =
+        currentTurn === "player" &&
+        !gameOver &&
+        playerHand.length > 0 &&
+        !playerHand.some(
+            tile =>
+                canPlayTile(tile)
+        );
+
+
+    passButton.disabled =
+        !canPass;
+
+
+    passButton.style.opacity =
+        canPass
+            ? "1"
+            : ".45";
+}
+
+
+// ============================================================
+// GANADOR
 // ============================================================
 
 function checkWinner() {
@@ -893,7 +1087,7 @@ function checkWinner() {
     ) {
 
         endGame(
-            "🎉 ¡Ganaste!"
+            "🎉 ¡Ganaste la partida!"
         );
 
         return true;
@@ -905,7 +1099,7 @@ function checkWinner() {
     ) {
 
         endGame(
-            "🤖 El bot ganó."
+            "🤖 El bot ganó la partida."
         );
 
         return true;
@@ -917,16 +1111,21 @@ function checkWinner() {
 
 
 // ============================================================
-// PARTIDA BLOQUEADA
+// BLOQUEO
 // ============================================================
 
 function endBlockedGame() {
 
     const playerPoints =
-        calculatePoints(playerHand);
+        calculatePoints(
+            playerHand
+        );
+
 
     const botPoints =
-        calculatePoints(botHand);
+        calculatePoints(
+            botHand
+        );
 
 
     if (
@@ -935,7 +1134,7 @@ function endBlockedGame() {
     ) {
 
         endGame(
-            `🔒 Partida bloqueada. Ganaste por puntos: ${playerPoints} vs ${botPoints}.`
+            `🔒 Partida bloqueada. Ganaste por ${playerPoints} a ${botPoints}.`
         );
 
     }
@@ -946,7 +1145,7 @@ function endBlockedGame() {
     ) {
 
         endGame(
-            `🔒 Partida bloqueada. El bot gana por puntos: ${botPoints} vs ${playerPoints}.`
+            `🔒 Partida bloqueada. El bot gana ${botPoints} a ${playerPoints}.`
         );
 
     }
@@ -954,7 +1153,7 @@ function endBlockedGame() {
     else {
 
         endGame(
-            `🔒 Empate. Ambos tienen ${playerPoints} puntos.`
+            `🔒 Partida bloqueada. Empate ${playerPoints} a ${botPoints}.`
         );
     }
 }
@@ -967,20 +1166,17 @@ function endBlockedGame() {
 function calculatePoints(hand) {
 
     return hand.reduce(
-        (total, tile) => {
-
-            return total +
-                tile.a +
-                tile.b;
-
-        },
+        (total, tile) =>
+            total +
+            tile.a +
+            tile.b,
         0
     );
 }
 
 
 // ============================================================
-// FINALIZAR
+// FIN
 // ============================================================
 
 function endGame(message) {
@@ -998,7 +1194,7 @@ function endGame(message) {
 
 
 // ============================================================
-// BOTÓN PASAR
+// EVENTOS
 // ============================================================
 
 passButton.addEventListener(
@@ -1007,10 +1203,6 @@ passButton.addEventListener(
 );
 
 
-// ============================================================
-// NUEVA PARTIDA
-// ============================================================
-
 newGameButton.addEventListener(
     "click",
     startGame
@@ -1018,7 +1210,7 @@ newGameButton.addEventListener(
 
 
 // ============================================================
-// INICIAR
+// INICIO
 // ============================================================
 
 startGame();
