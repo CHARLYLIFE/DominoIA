@@ -1,6 +1,6 @@
 // =================================================================
-// ARCHIVO: js/domino.js (COMPLETO)
-// Motor de Juego: Dominó 1v1 contra la IA
+// ARCHIVO: js/domino.js (COMPLETO Y CORREGIDO)
+// Lógica de Dominó 1v1 vs IA
 // =================================================================
 
 class DominoGame {
@@ -8,213 +8,233 @@ class DominoGame {
         this.deck = [];
         this.playerHand = [];
         this.aiHand = [];
-        this.board = []; // Array de fichas jugadas en la mesa: [{left, right}]
-        this.turn = 'player'; // 'player' o 'ai'
+        this.board = [];
+        this.leftVal = null;
+        this.rightVal = null;
+        this.isPlayerTurn = true;
         this.gameOver = false;
-        this.statusMessage = "¡Tu turno! Selecciona una ficha.";
 
-        this.init();
+        this.initDOM();
+        this.startNewGame();
     }
 
-    // 1. Generar las 28 fichas (Doble 6)
-    generateDeck() {
+    initDOM() {
+        this.boardEl = document.getElementById('board');
+        this.playerHandEl = document.getElementById('player-hand');
+        this.aiCountEl = document.getElementById('ai-count');
+        this.statusEl = document.getElementById('status-msg');
+        this.btnPass = document.getElementById('btn-pass');
+
+        this.btnPass.addEventListener('click', () => this.handlePassOrDraw());
+    }
+
+    startNewGame() {
+        // 1. Generar las 28 fichas (0-0 a 6-6)
         this.deck = [];
         for (let i = 0; i <= 6; i++) {
             for (let j = i; j <= 6; j++) {
-                this.deck.push({ left: i, right: j });
+                this.deck.push({ a: i, b: j });
             }
         }
-    }
 
-    // 2. Barajar
-    shuffleDeck() {
-        for (let i = this.deck.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [this.deck[i], this.deck[j]] = [this.deck[j], this.deck[i]];
-        }
-    }
+        // 2. Barajar
+        this.deck.sort(() => Math.random() - 0.5);
 
-    // 3. Inicializar / Reiniciar partida
-    init() {
-        this.generateDeck();
-        this.shuffleDeck();
-        this.board = [];
-        this.gameOver = false;
-
-        // Repartir 7 fichas a cada uno
+        // 3. Repartir 7 fichas a cada uno
         this.playerHand = this.deck.splice(0, 7);
         this.aiHand = this.deck.splice(0, 7);
 
-        // Quien tenga el doble más alto o mayor ficha empieza
-        this.turn = 'player';
-        this.statusMessage = "Partida iniciada. ¡Tu turno!";
+        this.board = [];
+        this.leftVal = null;
+        this.rightVal = null;
+        this.gameOver = false;
+        this.isPlayerTurn = true;
+
+        this.updateUI();
+        this.setStatus('¡Comienza el juego! Tu turno.');
     }
 
-    // Obtener extremos disponibles de la mesa
-    getBoardEnds() {
-        if (this.board.length === 0) return null;
-        const leftEnd = this.board[0].left;
-        const rightEnd = this.board[this.board.length - 1].right;
-        return { left: leftEnd, right: rightEnd };
+    renderBoard() {
+        this.boardEl.innerHTML = '';
+        this.board.forEach(tile => {
+            const tileEl = document.createElement('div');
+            tileEl.className = 'tile horizontal';
+            tileEl.innerHTML = `
+                <div class="tile-half">${tile.a}</div>
+                <div class="divider-v"></div>
+                <div class="tile-half">${tile.b}</div>
+            `;
+            this.boardEl.appendChild(tileEl);
+        });
     }
 
-    // Obtener las jugadas válidas para una mano
-    getValidMoves(hand) {
-        if (this.board.length === 0) {
-            // Si la mesa está vacía, cualquier ficha se puede jugar
-            return hand.map((tile, index) => ({ tile, index, side: 'any' }));
-        }
+    renderPlayerHand() {
+        this.playerHandEl.innerHTML = '';
+        const playableMoves = this.getPlayableMoves(this.playerHand);
 
-        const ends = this.getBoardEnds();
-        const validMoves = [];
+        this.playerHand.forEach((tile, index) => {
+            const tileEl = document.createElement('div');
+            tileEl.className = 'tile';
 
-        hand.forEach((tile, index) => {
-            let canLeft = false;
-            let canRight = false;
-
-            // Verificar si encaja en el extremo izquierdo
-            if (tile.left === ends.left || tile.right === ends.left) {
-                canLeft = true;
-            }
-            // Verificar si encaja en el extremo derecho
-            if (tile.left === ends.right || tile.right === ends.right) {
-                canRight = true;
+            const canPlay = playableMoves.some(m => m.index === index);
+            if (canPlay && this.isPlayerTurn && !this.gameOver) {
+                tileEl.classList.add('playable');
+                tileEl.addEventListener('click', () => this.playPlayerTile(index));
             }
 
-            if (canLeft) validMoves.push({ tile, index, side: 'left' });
-            if (canRight) validMoves.push({ tile, index, side: 'right' });
+            tileEl.innerHTML = `
+                <div class="tile-half">${tile.a}</div>
+                <div class="divider"></div>
+                <div class="tile-half">${tile.b}</div>
+            `;
+            this.playerHandEl.appendChild(tileEl);
         });
 
-        return validMoves;
+        if (this.isPlayerTurn && !this.gameOver) {
+            this.btnPass.disabled = playableMoves.length > 0;
+            this.btnPass.innerText = this.deck.length > 0 ? `Robar (${this.deck.length})` : 'Pasar';
+        } else {
+            this.btnPass.disabled = true;
+        }
     }
 
-    // Ejecutar una jugada
-    playTile(playerType, tileIndex, side) {
-        if (this.gameOver) return false;
-
-        const hand = playerType === 'player' ? this.playerHand : this.aiHand;
-        const tile = hand[tileIndex];
-
-        if (!tile) return false;
-
+    getPlayableMoves(hand) {
         if (this.board.length === 0) {
-            this.board.push({ left: tile.left, right: tile.right });
-        } else {
-            const ends = this.getBoardEnds();
-
-            if (side === 'left') {
-                // Orientar la ficha correctamente para el lado izquierdo
-                let newTile = { left: tile.left, right: tile.right };
-                if (newTile.right !== ends.left) {
-                    newTile = { left: tile.right, right: tile.left };
-                }
-                this.board.unshift(newTile);
-            } else if (side === 'right') {
-                // Orientar la ficha correctamente para el lado derecho
-                let newTile = { left: tile.left, right: tile.right };
-                if (newTile.left !== ends.right) {
-                    newTile = { left: tile.right, right: tile.left };
-                }
-                this.board.push(newTile);
-            }
+            return hand.map((tile, index) => ({ index, side: 'first', tile }));
         }
 
-        // Remover ficha de la mano
-        hand.splice(tileIndex, 1);
+        const moves = [];
+        hand.forEach((tile, index) => {
+            if (tile.a === this.leftVal) moves.push({ index, side: 'left', tile: { a: tile.b, b: tile.a } });
+            else if (tile.b === this.leftVal) moves.push({ index, side: 'left', tile: { a: tile.a, b: tile.b } });
 
-        // Verificar si alguien ganó
+            if (tile.a === this.rightVal) moves.push({ index, side: 'right', tile: { a: tile.a, b: tile.b } });
+            else if (tile.b === this.rightVal) moves.push({ index, side: 'right', tile: { a: tile.b, b: tile.a } });
+        });
+
+        return moves;
+    }
+
+    playTile(tileObj, side) {
+        if (side === 'first') {
+            this.board.push(tileObj);
+            this.leftVal = tileObj.a;
+            this.rightVal = tileObj.b;
+        } else if (side === 'left') {
+            this.board.unshift(tileObj);
+            this.leftVal = tileObj.a;
+        } else if (side === 'right') {
+            this.board.push(tileObj);
+            this.rightVal = tileObj.b;
+        }
+    }
+
+    playPlayerTile(handIndex) {
+        if (!this.isPlayerTurn || this.gameOver) return;
+
+        const tile = this.playerHand[handIndex];
+        const moves = this.getPlayableMoves([tile]);
+
+        if (moves.length === 0) return;
+
+        const move = moves[0];
+        // Ajustamos el lado si es necesario según la jugada real
+        let targetSide = move.side;
+        if (this.board.length === 0) targetSide = 'first';
+
+        this.playTile(move.tile, targetSide);
+        this.playerHand.splice(handIndex, 1);
+
+        if (this.checkWin(this.playerHand, '👤 ¡Ganaste la partida!')) return;
+
+        this.isPlayerTurn = false;
+        this.updateUI();
+        this.setStatus('Turno de la IA...');
+
+        setTimeout(() => this.aiTurn(), 800);
+    }
+
+    aiTurn() {
+        if (this.gameOver) return;
+
+        let moves = this.getPlayableMoves(this.aiHand);
+
+        while (moves.length === 0 && this.deck.length > 0) {
+            this.aiHand.push(this.deck.pop());
+            moves = this.getPlayableMoves(this.aiHand);
+        }
+
+        if (moves.length > 0) {
+            // Usamos directamente el índice seguro de la jugada
+            const move = moves[0];
+            this.playTile(move.tile, this.board.length === 0 ? 'first' : move.side);
+            this.aiHand.splice(move.index, 1);
+
+            if (this.checkWin(this.aiHand, '🤖 La IA ha ganado.')) return;
+            this.setStatus('Tu turno.');
+        } else {
+            this.setStatus('La IA pasó. Tu turno.');
+        }
+
+        this.isPlayerTurn = true;
+        this.checkBlock();
+        this.updateUI();
+    }
+
+    handlePassOrDraw() {
+        if (!this.isPlayerTurn || this.gameOver) return;
+
+        if (this.deck.length > 0) {
+            this.playerHand.push(this.deck.pop());
+            this.updateUI();
+        } else {
+            this.isPlayerTurn = false;
+            this.setStatus('Pasaste el turno. Juega la IA...');
+            this.updateUI();
+            setTimeout(() => this.aiTurn(), 800);
+        }
+    }
+
+    checkWin(hand, msg) {
         if (hand.length === 0) {
             this.gameOver = true;
-            this.statusMessage = playerType === 'player' ? "¡GANASTE LA PARTIDA! 🎉" : "¡La IA ha ganado! 🤖";
+            this.setStatus(msg);
+            this.updateUI();
             return true;
         }
-
-        // Cambiar turno
-        this.switchTurn();
-        return true;
+        return false;
     }
 
-    // Pasar turno o robar de la sopa si no hay jugadas
-    passOrDraw(playerType) {
-        const hand = playerType === 'player' ? this.playerHand : this.aiHand;
-        
-        // Si hay fichas en la sopa (deck), robar una
-        if (this.deck.length > 0) {
-            const drawnTile = this.deck.pop();
-            hand.push(drawnTile);
-            this.statusMessage = playerType === 'player' ? "Robaste una ficha." : "La IA robó una ficha.";
-            return true;
-        } else {
-            // Si la sopa está vacía, se pasa el turno
-            this.statusMessage = playerType === 'player' ? "Pasaste el turno." : "La IA pasó el turno.";
-            this.switchTurn();
-
-            // Comprobar si el juego se trancó
-            this.checkTranque();
-            return false;
-        }
-    }
-
-    switchTurn() {
-        this.turn = this.turn === 'player' ? 'ai' : 'player';
-
-        if (this.turn === 'ai' && !this.gameOver) {
-            this.statusMessage = "Turno de la IA pensando...";
-            setTimeout(() => this.makeAiMove(), 1000);
-        } else if (this.turn === 'player' && !this.gameOver) {
-            // Verificar si el jugador tiene movimientos posibles
-            const moves = this.getValidMoves(this.playerHand);
-            if (moves.length === 0) {
-                if (this.deck.length > 0) {
-                    this.statusMessage = "No tienes jugadas. Toca para robar.";
-                } else {
-                    this.statusMessage = "No tienes jugadas y no hay fichas. Pasas turno.";
-                }
-            } else {
-                this.statusMessage = "¡Tu turno! Toca una ficha válida.";
-            }
-        }
-    }
-
-    // Turno automático de la Inteligencia Artificial
-    makeAiMove() {
-        if (this.gameOver || this.turn !== 'ai') return;
-
-        const validMoves = this.getValidMoves(this.aiHand);
-
-        if (validMoves.length > 0) {
-            // IA Básica: Elige el primer movimiento válido que tenga
-            const move = validMoves[0];
-            this.playTile('ai', move.index, move.side === 'any' ? 'right' : move.side);
-        } else {
-            // Si no tiene movimientos, roba o pasa
-            const drew = this.passOrDraw('ai');
-            if (drew) {
-                // Reintentar si robó una nueva ficha
-                setTimeout(() => this.makeAiMove(), 800);
-            }
-        }
-    }
-
-    // Verificar si la partida se ha trancado (cerrado)
-    checkTranque() {
-        const playerMoves = this.getValidMoves(this.playerHand);
-        const aiMoves = this.getValidMoves(this.aiHand);
+    checkBlock() {
+        const playerMoves = this.getPlayableMoves(this.playerHand);
+        const aiMoves = this.getPlayableMoves(this.aiHand);
 
         if (playerMoves.length === 0 && aiMoves.length === 0 && this.deck.length === 0) {
             this.gameOver = true;
-
-            // Contar puntos
-            const playerPoints = this.playerHand.reduce((sum, t) => sum + t.left + t.right, 0);
-            const aiPoints = this.aiHand.reduce((sum, t) => sum + t.left + t.right, 0);
+            const playerPoints = this.playerHand.reduce((sum, t) => sum + t.a + t.b, 0);
+            const aiPoints = this.aiHand.reduce((sum, t) => sum + t.a + t.b, 0);
 
             if (playerPoints < aiPoints) {
-                this.statusMessage = `¡Juego trancado! Ganaste por menos puntos (${playerPoints} vs ${aiPoints}).`;
+                this.setStatus(`¡Juego Trancado! Ganaste por puntos (${playerPoints} vs ${aiPoints}).`);
             } else if (aiPoints < playerPoints) {
-                this.statusMessage = `¡Juego trancado! Ganó la IA por menos puntos (${aiPoints} vs ${playerPoints}).`;
+                this.setStatus(`Juego Trancado. Ganó la IA por puntos (${aiPoints} vs ${playerPoints}).`);
             } else {
-                this.statusMessage = `¡Empate en tranque! Ambos sumaron ${playerPoints} puntos.`;
+                this.setStatus('¡Juego Trancado! Empate en puntos.');
             }
         }
     }
+
+    setStatus(msg) {
+        this.statusEl.innerText = msg;
+    }
+
+    updateUI() {
+        this.aiCountEl.innerText = this.aiHand.length;
+        this.renderBoard();
+        this.renderPlayerHand();
+    }
 }
+
+window.addEventListener('DOMContentLoaded', () => {
+    new DominoGame();
+});
