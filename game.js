@@ -4,10 +4,10 @@ let state = {
     rivalHand: [],
     board: [],
     turn: 'player',
-    gameOver: false
+    gameOver: false,
+    fichaSeleccionadaIndex: null // Guarda la ficha que el jugador tocó para colocar
 };
 
-// Inicialización segura cuando el DOM carga por completo
 document.addEventListener("DOMContentLoaded", () => {
     iniciarPartida();
 });
@@ -16,11 +16,12 @@ function iniciarPartida() {
     let deck = crearBaraja();
     deck = barajar(deck);
 
-    state.playerHand = deck.splice(0, 7);
+    state.playerHand = ordenarMano(deck.splice(0, 7));
     state.rivalHand = deck.splice(0, 7);
     state.board = [];
     state.gameOver = false;
     state.turn = 'player';
+    state.fichaSeleccionadaIndex = null;
 
     actualizarInterfaz();
     mostrarMensaje("Partida iniciada. ¡Tu turno!");
@@ -42,6 +43,19 @@ function barajar(array) {
         [array[i], array[j]] = [array[j], array[i]];
     }
     return array;
+}
+
+function ordenarMano(mano) {
+    return mano.sort((x, y) => {
+        let esDobleX = x.a === x.b;
+        let esDobleY = y.a === y.b;
+        if (esDobleX && !esDobleY) return -1;
+        if (!esDobleX && esDobleY) return 1;
+        let sumaX = x.a + x.b;
+        let sumaY = y.a + y.b;
+        if (sumaX !== sumaY) return sumaY - sumaX;
+        return Math.max(y.a, y.b) - Math.max(x.a, x.b);
+    });
 }
 
 function obtenerPuntasMesa() {
@@ -70,7 +84,8 @@ function jugadorTieneMovimientos(mano) {
     return mano.some(f => movimientosValidosFicha(f, puntas).length > 0);
 }
 
-function jugarFichaJugador(indexFicha) {
+// Al tocar una ficha en la mano
+function seleccionarFichaJugador(indexFicha) {
     if (state.turn !== 'player' || state.gameOver) return;
 
     let ficha = state.playerHand[indexFicha];
@@ -79,18 +94,38 @@ function jugarFichaJugador(indexFicha) {
 
     if (validos.length === 0) {
         mostrarMensaje("¡No puedes jugar esta ficha!");
+        state.fichaSeleccionadaIndex = null;
+        actualizarInterfaz();
         return;
     }
 
-    let puntaElegida = validos[0]; 
-    if (validos.length > 1) {
-        puntaElegida = prompt(`¿En qué lado deseas colocar la ficha [${ficha.a}|${ficha.b}]?\nEscribe 'izquierda' o 'derecha':`, 'derecha');
-        if (puntaElegida !== 'izquierda' && puntaElegida !== 'derecha') return;
+    // Si la mesa está vacía o solo tiene un movimiento posible, se juega directo
+    if (validos.length === 1 || state.board.length === 0) {
+        colocarFichaEnMesa(ficha, validos[0]);
+        state.playerHand.splice(indexFicha, 1);
+        state.fichaSeleccionadaIndex = null;
+        finalizarTurnoJugador();
+    } else {
+        // Si se puede en ambos lados, guardamos la selección y pedimos elegir extremo en la mesa
+        state.fichaSeleccionadaIndex = indexFicha;
+        actualizarInterfaz();
+        mostrarMensaje("Toca el extremo izquierdo o derecho en la mesa para colocar la ficha.");
     }
+}
 
+// Cuando el jugador toca un extremo interactivo en la mesa
+function colocarEnExtremo(puntaElegida) {
+    if (state.fichaSeleccionadaIndex === null) return;
+
+    let ficha = state.playerHand[state.fichaSeleccionadaIndex];
     colocarFichaEnMesa(ficha, puntaElegida);
-    state.playerHand.splice(indexFicha, 1);
+    state.playerHand.splice(state.fichaSeleccionadaIndex, 1);
+    state.fichaSeleccionadaIndex = null;
+    
+    finalizarTurnoJugador();
+}
 
+function finalizarTurnoJugador() {
     chequearFinPartida();
 
     if (!state.gameOver) {
@@ -160,7 +195,7 @@ function turnoRival() {
                 pasarTurnoAutomatico();
             }, 1200);
         } else {
-            mostrarMensaje("¡Tu turno!");
+            mostrarMensaje("¡Tu turno! Toca una ficha.");
         }
     }
 }
@@ -172,6 +207,7 @@ function pasarTurno() {
 
 function pasarTurnoAutomatico() {
     state.turn = 'rival';
+    state.fichaSeleccionadaIndex = null;
     actualizarInterfaz();
     mostrarMensaje("Has pasado. Turno del rival...");
     setTimeout(turnoRival, 1000);
@@ -191,24 +227,27 @@ function chequearFinPartida() {
 
 function actualizarInterfaz() {
     let playerContainer = document.getElementById('player-hand');
-    if (!playerContainer) return; // Protección por si carga antes de tiempo
+    if (!playerContainer) return;
     
     playerContainer.innerHTML = '';
     let puntas = obtenerPuntasMesa();
+    state.playerHand = ordenarMano(state.playerHand);
 
     state.playerHand.forEach((f, idx) => {
         let tileDiv = document.createElement('div');
         let esValida = !puntas || movimientosValidosFicha(f, puntas).length > 0;
+        let esSeleccionada = state.fichaSeleccionadaIndex === idx;
         
-        tileDiv.className = `domino-tile ${esValida && state.turn === 'player' ? 'playable' : ''}`;
+        tileDiv.className = `domino-tile ${esValida && state.turn === 'player' ? 'playable' : ''} ${esSeleccionada ? 'selected' : ''}`;
         tileDiv.innerHTML = `<div class="half">${f.a}</div><div class="divider"></div><div class="half">${f.b}</div>`;
         
         if (state.turn === 'player') {
-            tileDiv.onclick = () => jugarFichaJugador(idx);
+            tileDiv.onclick = () => seleccionarFichaJugador(idx);
         }
         playerContainer.appendChild(tileDiv);
     });
 
+    // Renderizar mano del rival
     let rivalContainer = document.getElementById('rival-hand');
     rivalContainer.innerHTML = '';
     document.getElementById('rival-count').innerText = `Fichas en mano: ${state.rivalHand.length}`;
@@ -221,18 +260,50 @@ function actualizarInterfaz() {
         rivalContainer.appendChild(backDiv);
     }
 
+    // Renderizar Mesa y botones interactivos de extremos si hay una ficha seleccionada con 2 opciones
     let mesaContainer = document.getElementById('table-felt');
     if (state.board.length === 0) {
         mesaContainer.innerHTML = `<div id="mesa-puntas">Mesa vacía. Juega tu primera ficha.</div>`;
     } else {
         mesaContainer.innerHTML = '';
+        let chainDiv = document.createElement('div');
+        chainDiv.className = 'board-chain';
+
+        // Si hay una ficha seleccionada y tiene ambos extremos válidos, mostramos botón izquierdo
+        let mostrarBtnIzquierda = false;
+        let mostrarBtnDerecha = false;
+
+        if (state.fichaSeleccionadaIndex !== null) {
+            let fichaSel = state.playerHand[state.fichaSeleccionadaIndex];
+            let validosSel = movimientosValidosFicha(fichaSel, puntas);
+            if (validosSel.includes('izquierda')) mostrarBtnIzquierda = true;
+            if (validosSel.includes('derecha')) mostrarBtnDerecha = true;
+        }
+
+        if (mostrarBtnIzquierda) {
+            let btnIzq = document.createElement('button');
+            btnIzq.className = 'end-selector';
+            btnIzq.innerText = '⬅ Izquierda';
+            btnIzq.onclick = () => colocarEnExtremo('izquierda');
+            chainDiv.appendChild(btnIzq);
+        }
+
         state.board.forEach(f => {
             let tileDiv = document.createElement('div');
-            tileDiv.className = 'domino-tile';
-            tileDiv.style.transform = 'scale(0.85)';
+            tileDiv.className = 'domino-tile table-tile';
             tileDiv.innerHTML = `<div class="half">${f.a}</div><div class="divider"></div><div class="half">${f.b}</div>`;
-            mesaContainer.appendChild(tileDiv);
+            chainDiv.appendChild(tileDiv);
         });
+
+        if (mostrarBtnDerecha) {
+            let btnDer = document.createElement('button');
+            btnDer.className = 'end-selector';
+            btnDer.innerText = 'Derecha ➡';
+            btnDer.onclick = () => colocarEnExtremo('derecha');
+            chainDiv.appendChild(btnDer);
+        }
+
+        mesaContainer.appendChild(chainDiv);
     }
 
     let btnPass = document.getElementById('btn-pass');
