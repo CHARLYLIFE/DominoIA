@@ -20,133 +20,182 @@ body {
     flex-direction: column;
     justify-content: space-between;
     height: 100%;
-    padding: 10px;
-    max-width: 600px;
+    padding: 8px;
+    max-width: 500px;
     margin: 0 auto;
     width: 100%;
 }
 
 .player-panel {
-    background: rgba(30, 41, 59, 0.7);
-    border-radius: 12px;
-    padding: 10px;
+    background: rgba(30, 41, 59, 0.8);
+    border-radius: 10px;
+    padding: 6px;
     text-align: center;
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .player-panel h3 {
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     color: #94a3b8;
-    margin-bottom: 5px;
+    margin-bottom: 4px;
+}
+
+#rival-count {
+    font-size: 0.75rem;
+    color: #cbd5e1;
 }
 
 .hand-container {
     display: flex;
-    gap: 8px;
+    gap: 5px;
     overflow-x: auto;
-    padding: 5px 0;
+    padding: 4px 0;
     justify-content: center;
-    min-height: 80px;
     align-items: center;
+    min-height: 55px;
 }
 
-/* Diseño de la Ficha de Dominó */
+/* Fichas compactas y adaptadas */
 .domino-tile {
     background: #ffffff;
     color: #0f172a;
-    width: 42px;
-    height: 76px;
-    border-radius: 6px;
+    width: 32px;
+    height: 54px;
+    border-radius: 4px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     align-items: center;
-    padding: 4px;
+    padding: 2px;
     cursor: pointer;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.4);
     border: 1px solid #cbd5e1;
     flex-shrink: 0;
-    transition: transform 0.1s ease, background-color 0.2s;
+    transition: transform 0.1s ease;
 }
 
 .domino-tile:active {
-    transform: scale(0.92);
+    transform: scale(0.9);
 }
 
 .domino-tile.playable {
     border: 2px solid #22c55e;
-    box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.8);
+}
+
+.domino-tile.selected {
+    border: 2px solid #eab308;
+    transform: translateY(-4px);
+    box-shadow: 0 0 8px rgba(234, 179, 8, 0.8);
 }
 
 .half {
-    font-size: 1.2rem;
+    font-size: 0.95rem;
     font-weight: bold;
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 50%;
+    height: 48%;
     width: 100%;
 }
 
 .divider {
-    width: 80%;
-    height: 2px;
-    background: #cbd5e1;
+    width: 85%;
+    height: 1px;
+    background: #94a3b8;
 }
 
-/* Zona de la Mesa */
+/* Fichas en la Mesa */
 #board-container {
     flex-grow: 1;
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 10px;
+    padding: 6px 0;
 }
 
 #table-felt {
     background: #064e3b;
-    border: 3px solid #047857;
-    border-radius: 16px;
+    border: 2px solid #047857;
+    border-radius: 12px;
     width: 100%;
     height: 100%;
     display: flex;
     flex-direction: row;
     align-items: center;
     justify-content: center;
-    gap: 12px;
-    padding: 15px;
+    gap: 4px;
+    padding: 10px;
     overflow-x: auto;
-    box-shadow: inset 0 4px 10px rgba(0,0,0,0.5);
+    box-shadow: inset 0 3px 8px rgba(0,0,0,0.6);
+}
+
+.table-tile {
+    width: 28px;
+    height: 48px;
+    padding: 2px;
+    flex-shrink: 0;
+}
+
+.table-tile .half {
+    font-size: 0.85rem;
 }
 
 #mesa-puntas {
-    font-size: 1rem;
+    font-size: 0.85rem;
     color: #a7f3d0;
-    font-weight: 500;
+    width: 100%;
     text-align: center;
 }
 
-/* Botones de acción */
+/* Botones de selección de extremos en la mesa */
+.end-selector {
+    background: #eab308;
+    color: #0f172a;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 0.7rem;
+    cursor: pointer;
+    animation: pulse 1s infinite;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.05); opacity: 0.85; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.board-chain {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 5px;
+    width: 100%;
+    justify-content: center;
+}
+
+/* Botón y estados */
 .btn {
     background: #2563eb;
     color: white;
     border: none;
-    padding: 8px 16px;
-    border-radius: 8px;
+    padding: 6px 12px;
+    border-radius: 6px;
     font-weight: bold;
+    font-size: 0.8rem;
     cursor: pointer;
-    margin-top: 5px;
-}
-
-.btn:active {
-    background: #1d4ed8;
+    margin-top: 4px;
 }
 
 #status-msg {
     text-align: center;
-    font-size: 0.85rem;
-    padding: 4px;
-    background: rgba(0,0,0,0.4);
+    font-size: 0.8rem;
+    padding: 3px;
+    background: rgba(0,0,0,0.5);
     color: #38bdf8;
-    border-top: 1px solid rgba(255,255,255,0.05);
 }
