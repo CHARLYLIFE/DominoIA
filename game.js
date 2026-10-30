@@ -2,15 +2,15 @@ let state = {
     deck: [],
     playerHand: [],
     rivalHand: [],
-    board: [], // Array de fichas colocadas en orden en la mesa
-    turn: 'player', // 'player' o 'rival'
+    board: [],
+    turn: 'player',
     gameOver: false
 };
 
-// Inicializar juego al cargar la página
-window.onload = () => {
+// Inicialización segura cuando el DOM carga por completo
+document.addEventListener("DOMContentLoaded", () => {
     iniciarPartida();
-};
+});
 
 function iniciarPartida() {
     let deck = crearBaraja();
@@ -20,7 +20,7 @@ function iniciarPartida() {
     state.rivalHand = deck.splice(0, 7);
     state.board = [];
     state.gameOver = false;
-    state.turn = 'player'; // Empieza el jugador
+    state.turn = 'player';
 
     actualizarInterfaz();
     mostrarMensaje("Partida iniciada. ¡Tu turno!");
@@ -44,7 +44,6 @@ function barajar(array) {
     return array;
 }
 
-// Obtener las dos puntas extremas de la mesa
 function obtenerPuntasMesa() {
     if (state.board.length === 0) return null;
     let primera = state.board[0];
@@ -55,13 +54,11 @@ function obtenerPuntasMesa() {
     };
 }
 
-// Verificar si una ficha encaja y en qué punta
 function movimientosValidosFicha(ficha, puntas) {
-    if (!puntas) return ['inicial']; // Si la mesa está vacía, entra por cualquier lado
+    if (!puntas) return ['inicial'];
     let validos = [];
     if (ficha.a === puntas.izquierda || ficha.b === puntas.izquierda) validos.push('izquierda');
     if (ficha.a === puntas.derecha || ficha.b === puntas.derecha) {
-        // Evitar duplicar punta si izquierda y derecha son el mismo valor y la ficha es doble
         if (puntas.izquierda !== puntas.derecha || validos.length === 0) validos.push('derecha');
     }
     return validos;
@@ -73,7 +70,6 @@ function jugadorTieneMovimientos(mano) {
     return mano.some(f => movimientosValidosFicha(f, puntas).length > 0);
 }
 
-// Interacción del Jugador al hacer clic en una ficha
 function jugarFichaJugador(indexFicha) {
     if (state.turn !== 'player' || state.gameOver) return;
 
@@ -86,14 +82,13 @@ function jugarFichaJugador(indexFicha) {
         return;
     }
 
-    // Si hay opción en ambos lados, por comodidad por defecto se intenta ajustar a la derecha o izquierda según convenga
     let puntaElegida = validos[0]; 
     if (validos.length > 1) {
         puntaElegida = prompt(`¿En qué lado deseas colocar la ficha [${ficha.a}|${ficha.b}]?\nEscribe 'izquierda' o 'derecha':`, 'derecha');
         if (puntaElegida !== 'izquierda' && puntaElegida !== 'derecha') return;
     }
 
-    colocarFichaEnMesa(ficha, puntaElegida, true);
+    colocarFichaEnMesa(ficha, puntaElegida);
     state.playerHand.splice(indexFicha, 1);
 
     chequearFinPartida();
@@ -102,11 +97,11 @@ function jugarFichaJugador(indexFicha) {
         state.turn = 'rival';
         actualizarInterfaz();
         mostrarMensaje("Turno del rival pensando...");
-        setTimeout(turnoRival, 1000); // IA responde tras 1 segundo
+        setTimeout(turnoRival, 1000);
     }
 }
 
-function colocarFichaEnMesa(ficha, punta, esJugador) {
+function colocarFichaEnMesa(ficha, punta) {
     if (state.board.length === 0) {
         state.board.push(ficha);
         return;
@@ -118,18 +113,17 @@ function colocarFichaEnMesa(ficha, punta, esJugador) {
         if (ficha.b === puntas.izquierda) {
             state.board.unshift({ a: ficha.a, b: ficha.b });
         } else {
-            state.board.unshift({ a: ficha.b, b: ficha.a }); // Se voltea si es necesario
+            state.board.unshift({ a: ficha.b, b: ficha.a });
         }
     } else {
         if (ficha.a === puntas.derecha) {
             state.board.push({ a: ficha.a, b: ficha.b });
         } else {
-            state.board.push({ a: ficha.b, b: ficha.a }); // Se voltea si es necesario
+            state.board.push({ a: ficha.b, b: ficha.a });
         }
     }
 }
 
-// Lógica del Rival (IA Base inteligente)
 function turnoRival() {
     if (state.gameOver) return;
 
@@ -144,11 +138,10 @@ function turnoRival() {
     });
 
     if (jugadasPosibles.length > 0) {
-        // IA elige una jugada (prioriza dobles o fichas altas)
         jugadasPosibles.sort((x, y) => (y.ficha.a + y.ficha.b) - (x.ficha.a + x.ficha.b));
         let jugadaElegida = jugadasPosibles[0];
 
-        colocarFichaEnMesa(jugadaElegida.ficha, jugadaElegida.punta, false);
+        colocarFichaEnMesa(jugadaElegida.ficha, jugadaElegida.punta);
         state.rivalHand.splice(jugadaElegida.index, 1);
         mostrarMensaje("El rival ha jugado.");
     } else {
@@ -161,7 +154,6 @@ function turnoRival() {
         state.turn = 'player';
         actualizarInterfaz();
 
-        // Verificar si el jugador tiene fichas para jugar; si no, pase automático
         if (!jugadorTieneMovimientos(state.playerHand)) {
             mostrarMensaje("No tienes fichas válidas. ¡Paso automático!");
             setTimeout(() => {
@@ -197,10 +189,10 @@ function chequearFinPartida() {
     }
 }
 
-// Renderizado visual en pantalla
 function actualizarInterfaz() {
-    // Renderizar mano del jugador
     let playerContainer = document.getElementById('player-hand');
+    if (!playerContainer) return; // Protección por si carga antes de tiempo
+    
     playerContainer.innerHTML = '';
     let puntas = obtenerPuntasMesa();
 
@@ -217,7 +209,6 @@ function actualizarInterfaz() {
         playerContainer.appendChild(tileDiv);
     });
 
-    // Renderizar mano del rival (oculta, solo fichas contadas)
     let rivalContainer = document.getElementById('rival-hand');
     rivalContainer.innerHTML = '';
     document.getElementById('rival-count').innerText = `Fichas en mano: ${state.rivalHand.length}`;
@@ -230,7 +221,6 @@ function actualizarInterfaz() {
         rivalContainer.appendChild(backDiv);
     }
 
-    // Renderizar Mesa
     let mesaContainer = document.getElementById('table-felt');
     if (state.board.length === 0) {
         mesaContainer.innerHTML = `<div id="mesa-puntas">Mesa vacía. Juega tu primera ficha.</div>`;
@@ -245,7 +235,6 @@ function actualizarInterfaz() {
         });
     }
 
-    // Botón de pase visible solo si el usuario no tiene jugadas válidas
     let btnPass = document.getElementById('btn-pass');
     if (state.turn === 'player' && !jugadorTieneMovimientos(state.playerHand)) {
         btnPass.style.display = 'inline-block';
@@ -255,5 +244,6 @@ function actualizarInterfaz() {
 }
 
 function mostrarMensaje(texto) {
-    document.getElementById('status-msg').innerText = texto;
+    let msgEl = document.getElementById('status-msg');
+    if (msgEl) msgEl.innerText = texto;
 }
