@@ -1,123 +1,41 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#071510">
-  <meta name="description" content="Dominó doble-seis contra una IA con conteo de pases y simulaciones Monte Carlo.">
-  <title>Dominó Pro · Tú contra la IA</title>
-  <link rel="stylesheet" href="./css/game.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Dominó 1vs1</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-shell">
-    <header class="topbar">
-      <div class="brand-mark" aria-hidden="true">▦</div>
-      <div class="brand-copy">
-        <div class="eyebrow">DOBLE-SEIS · 1 VS 1</div>
-        <h1>Dominó <span>Pro</span></h1>
-      </div>
-      <div class="online-pill"><span class="live-dot"></span> IA local</div>
-    </header>
 
-    <section class="status-panel" aria-live="polite" aria-atomic="true">
-      <span class="status-orb" aria-hidden="true"></span>
-      <div>
-        <div class="status-label">ESTADO DE LA PARTIDA</div>
-        <div id="status">Preparando la mesa…</div>
-        <div id="aiInfo" class="ai-info">Motor de estrategia listo.</div>
-      </div>
-    </section>
-
-    <main id="game">
-      <section class="opponent-section player-section" id="botSection">
-        <div class="section-heading">
-          <div class="avatar bot-avatar" aria-hidden="true">AI</div>
-          <div class="player-copy">
-            <div class="player-name">Bot estratega <span class="pro-badge">PRO</span></div>
-            <div class="player-subtitle" id="botSubtext">Analiza jugadas y pases</div>
-          </div>
-          <div class="tile-counter"><strong id="botCount">7</strong><span>FICHAS</span></div>
+    <div id="game-container">
+        <!-- Panel del Rival -->
+        <div class="player-panel">
+            <h3>Rival (Bot)</h3>
+            <div id="rival-hand" class="hand-container"></div>
+            <span id="rival-count">Fichas: 7</span>
         </div>
-        <div id="botHand" class="hand bot-hand" aria-label="Fichas ocultas del bot"></div>
-      </section>
 
-      <section class="table-frame" aria-label="Mesa de dominó">
-        <div class="table-topline">
-          <span class="table-label"><span class="table-icon">◆</span> MESA DE JUEGO</span>
-          <span id="moveCounter" class="move-counter">0 jugadas</span>
-        </div>
-        <div class="table-inlay">
-          <div class="end-indicator end-left"><span>IZQUIERDA</span><strong id="leftEnd">—</strong></div>
-          <div class="end-indicator end-right"><span>DERECHA</span><strong id="rightEnd">—</strong></div>
-          <div id="board" class="board" aria-label="Fichas jugadas">
-            <div class="empty-board">
-              <div class="empty-symbol" aria-hidden="true">◇</div>
-              <strong>La mesa está vacía</strong>
-              <span>La primera ficha inicia la cadena</span>
+        <!-- Zona de Juego / Mesa -->
+        <div id="board-container">
+            <div id="table-felt">
+                <div id="mesa-puntas">Esperando inicio...</div>
             </div>
-          </div>
         </div>
-        <div class="table-bottomline">
-          <span><i class="legend-dot"></i> Doble-seis · 28 fichas</span>
-          <span id="outsideInfo">14 fuera del juego</span>
-        </div>
-      </section>
 
-      <section class="player-section human-section" id="playerSection">
-        <div class="section-heading">
-          <div class="avatar human-avatar" aria-hidden="true">TÚ</div>
-          <div class="player-copy">
-            <div class="player-name">Tu mano</div>
-            <div id="playerSubtext" class="player-subtitle">Elige una ficha válida</div>
-          </div>
-          <div class="tile-counter"><strong id="playerCount">7</strong><span>FICHAS</span></div>
+        <!-- Panel del Jugador (Tú) -->
+        <div class="player-panel">
+            <h3 id="player-title">Tú (CHARLY)</h3>
+            <div id="player-hand" class="hand-container"></div>
+            <div id="controls">
+                <button id="btn-pass" class="btn" style="display:none;" onclick="pasarTurno()">Pasar</button>
+            </div>
         </div>
-        <div id="playerHand" class="hand human-hand" aria-label="Tus fichas"></div>
-        <div id="sidePicker" class="side-picker is-hidden" aria-live="polite">
-          <span>¿Dónde quieres colocarla?</span>
-          <div class="side-picker-actions">
-            <button id="playLeft" class="button button-secondary" type="button">← Izquierda</button>
-            <button id="playRight" class="button button-secondary" type="button">Derecha →</button>
-          </div>
-        </div>
-      </section>
+    </div>
 
-      <section class="control-panel" aria-label="Controles de la partida">
-        <div class="difficulty-control">
-          <label for="difficulty">DIFICULTAD DE LA IA</label>
-          <select id="difficulty">
-            <option value="easy">Fácil</option>
-            <option value="hard">Difícil</option>
-            <option value="expert" selected>Experto</option>
-          </select>
-        </div>
-        <div class="control-buttons">
-          <button id="passButton" class="button button-secondary" type="button" disabled>Pasar</button>
-          <button id="hintButton" class="button button-secondary" type="button">✦ Pista</button>
-          <button id="newGame" class="button button-primary" type="button">Nueva partida</button>
-        </div>
-        <div class="rule-note"><span aria-hidden="true">ⓘ</span> Sin robo: 7 fichas por jugador y 14 fuera. Solo puedes pasar cuando no tienes jugada.</div>
-      </section>
+    <!-- Mensajes de Estado / Alertas -->
+    <div id="status-msg">¡Tu turno!</div>
 
-      <section class="stats-panel" aria-label="Estadísticas locales">
-        <div class="stats-title">TUS RESULTADOS</div>
-        <div class="stats-grid">
-          <div class="stat"><strong id="winsPlayer">0</strong><span>Victorias</span></div>
-          <div class="stat"><strong id="winsBot">0</strong><span>Derrotas</span></div>
-          <div class="stat"><strong id="draws">0</strong><span>Empates</span></div>
-          <div class="stat"><strong id="winRate">—</strong><span>% de victoria</span></div>
-        </div>
-      </section>
-    </main>
-
-    <footer class="app-footer">
-      <span>DOMINÓ PRO</span>
-      <span>IA probabilística · Monte Carlo</span>
-    </footer>
-  </div>
-
-  <script src="./js/engine.js"></script>
-  <script src="./js/ai.js"></script>
-  <script src="./js/domino.js"></script>
+    <script src="game.js"></script>
 </body>
 </html>
