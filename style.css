@@ -1,206 +1,32 @@
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    user-select: none;
-}
-
-body {
-    background-color: #0f172a;
-    color: #f8fafc;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-}
-
-#game-container {
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    height: 100vh;
-    max-height: 100vh;
-    padding: 6px;
-    max-width: 500px;
-    margin: 0 auto;
-    width: 100%;
-}
-
-.player-panel {
-    background: rgba(30, 41, 59, 0.9);
-    border-radius: 8px;
-    padding: 4px 8px;
-    text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    flex-shrink: 0; /* Evita que el panel se deforme o desaparezca */
-}
-
-.player-panel h3 {
-    font-size: 0.75rem;
-    color: #94a3b8;
-    margin-bottom: 2px;
-}
-
-#rival-count {
-    font-size: 0.7rem;
-    color: #cbd5e1;
-}
-
-.hand-container {
-    display: flex;
-    gap: 4px;
-    overflow-x: auto;
-    padding: 2px 0;
-    justify-content: center;
-    align-items: center;
-    min-height: 48px;
-}
-
-/* Fichas más pequeñas y compactas */
-.domino-tile {
-    background: #ffffff;
-    color: #0f172a;
-    width: 26px;
-    height: 46px;
-    border-radius: 3px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1px;
-    cursor: pointer;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
-    border: 1px solid #cbd5e1;
-    flex-shrink: 0;
-    transition: transform 0.1s ease;
-}
-
-.domino-tile:active {
-    transform: scale(0.9);
-}
-
-.domino-tile.playable {
-    border: 2px solid #22c55e;
-    box-shadow: 0 0 5px rgba(34, 197, 94, 0.8);
-}
-
-.domino-tile.selected {
-    border: 2px solid #eab308;
-    transform: translateY(-3px);
-    box-shadow: 0 0 6px rgba(234, 179, 8, 0.8);
-}
-
-.half {
-    font-size: 0.8rem;
-    font-weight: bold;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 48%;
-    width: 100%;
-}
-
-.divider {
-    width: 80%;
-    height: 1px;
-    background: #94a3b8;
-}
-
-/* Zona de la Mesa */
-#board-container {
-    flex-grow: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 4px 0;
-    overflow: hidden;
-}
-
-#table-felt {
-    background: #064e3b;
-    border: 2px solid #047857;
-    border-radius: 10px;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 6px;
-    overflow-y: auto; /* Permite scroll vertical interno si se llena la mesa */
-    box-shadow: inset 0 3px 8px rgba(0,0,0,0.6);
-}
-
-/* Fichas en la mesa ordenadas en horizontal y con salto de línea automático */
-.board-chain {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: wrap; /* Dobla la hilera de fichas si se llena la línea */
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    padding: 4px;
-    width: 100%;
-}
-
+/* Fichas en la mesa acostadas por defecto (Horizontal) */
 .table-tile {
-    width: 24px;
-    height: 42px;
+    width: 44px;
+    height: 24px;
+    flex-direction: row; /* Horizontal */
     padding: 1px;
     flex-shrink: 0;
 }
 
 .table-tile .half {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
+    height: 100%;
+    width: 50%;
 }
 
-#mesa-puntas {
-    font-size: 0.75rem;
-    color: #a7f3d0;
-    width: 100%;
-    text-align: center;
+.table-tile .divider {
+    width: 1px;
+    height: 80%;
+    background: #94a3b8;
 }
 
-/* Botones de selección de extremos en la mesa */
-.end-selector {
-    background: #eab308;
-    color: #0f172a;
-    border: none;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-weight: bold;
-    font-size: 0.65rem;
-    cursor: pointer;
-    animation: pulse 1s infinite;
-    flex-shrink: 0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+/* Fichas dobles cruzadas en vertical */
+.table-tile.is-double {
+    width: 24px;
+    height: 44px;
+    flex-direction: column; /* Vertical */
 }
 
-@keyframes pulse {
-    0% { transform: scale(1); opacity: 1; }
-    50% { transform: scale(1.05); opacity: 0.85; }
-    100% { transform: scale(1); opacity: 1; }
-}
-
-/* Botón y estados */
-.btn {
-    background: #2563eb;
-    color: white;
-    border: none;
-    padding: 4px 10px;
-    border-radius: 5px;
-    font-weight: bold;
-    font-size: 0.75rem;
-    cursor: pointer;
-    margin-top: 2px;
-}
-
-#status-msg {
-    text-align: center;
-    font-size: 0.75rem;
-    padding: 2px;
-    background: rgba(0,0,0,0.5);
-    color: #38bdf8;
-    flex-shrink: 0;
+.table-tile.is-double .divider {
+    width: 80%;
+    height: 1px;
 }
