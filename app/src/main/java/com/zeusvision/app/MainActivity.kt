@@ -1,3 +1,4 @@
+
 package com.zeusvision.app
 
 import android.app.Activity
@@ -32,17 +33,17 @@ class MainActivity : Activity() {
             setBackgroundColor(0xFF07131D.toInt())
         }
         val title = TextView(this).apply {
-            text = "♟  ZEUS VISION"
-            textSize = 30f
+            text = "♟  ZEUS VISION 0.4"
+            textSize = 28f
             setTextColor(0xFF35E59A.toInt())
             gravity = Gravity.CENTER
         }
         val subtitle = TextView(this).apply {
-            text = "ASISTENTE VISUAL PARA DOMINÓ\n\nVersión nativa 0.3.0\n\nZEUS necesita permiso para capturar la pantalla del juego y mostrar un panel flotante. La captura solo comienza cuando tú la autorizas."
-            textSize = 16f
+            text = "PRUEBA DE CAPTURA + BOT BÁSICO\n\n1. Activa el permiso para mostrar sobre otras apps.\n2. Autoriza la grabación de pantalla.\n3. Abre Dominó Online.\n4. En el panel flotante introduce tus fichas y los extremos para recibir una sugerencia.\n\nFormato de mano: 6-5, 2-2, 0-3. Mesa vacía: '-' en ambos extremos."
+            textSize = 15f
             setTextColor(0xFFEAF2F7.toInt())
             gravity = Gravity.CENTER
-            setPadding(0, 24, 0, 28)
+            setPadding(0, 22, 0, 26)
         }
         val start = Button(this).apply {
             text = "ACTIVAR ZEUS"
@@ -50,20 +51,15 @@ class MainActivity : Activity() {
         }
         val stop = Button(this).apply {
             text = "DETENER CAPTURA"
-            setOnClickListener { stopService(Intent(this@MainActivity, CaptureService::class.java)); Toast.makeText(this@MainActivity, "ZEUS detenido", Toast.LENGTH_SHORT).show() }
-        }
-        val note = TextView(this).apply {
-            text = "Nota: esta primera compilación comprueba la captura nativa y la ventana flotante. El reconocimiento automático de fichas y el cálculo avanzado de jugadas se incorporarán y calibrarán después con capturas reales."
-            textSize = 13f
-            setTextColor(0xFF9FB2C0.toInt())
-            gravity = Gravity.CENTER
-            setPadding(0, 28, 0, 0)
+            setOnClickListener {
+                stopService(Intent(this@MainActivity, CaptureService::class.java))
+                Toast.makeText(this@MainActivity, "ZEUS detenido", Toast.LENGTH_SHORT).show()
+            }
         }
         root.addView(title)
         root.addView(subtitle)
         root.addView(start, LinearLayout.LayoutParams(-1, -2))
         root.addView(stop, LinearLayout.LayoutParams(-1, -2))
-        root.addView(note)
         setContentView(root)
     }
 
@@ -71,7 +67,7 @@ class MainActivity : Activity() {
         if (!Settings.canDrawOverlays(this)) {
             val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName"))
             startActivity(intent)
-            Toast.makeText(this, "Activa ‘Mostrar sobre otras apps’ y vuelve a ZEUS", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Activa ‘Mostrar sobre otras apps’ y vuelve a ZEUS para activarlo", Toast.LENGTH_LONG).show()
             return
         }
         startActivityForResult(projectionManager.createScreenCaptureIntent(), captureRequest)
@@ -86,7 +82,7 @@ class MainActivity : Activity() {
                 putExtra(CaptureService.EXTRA_RESULT_DATA, data)
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(service) else startService(service)
-            Toast.makeText(this, "ZEUS está activo. Abre tu dominó.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "ZEUS está activo. Abre tu dominó y usa el panel flotante.", Toast.LENGTH_LONG).show()
         } else if (requestCode == captureRequest) {
             Toast.makeText(this, "No se autorizó la captura", Toast.LENGTH_SHORT).show()
         }
