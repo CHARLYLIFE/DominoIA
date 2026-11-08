@@ -1,0 +1,14 @@
+ZEUS AI 1.0 - INFORME DEL MODELO ENTRENADO
+
+Modelo exportado: app/src/main/assets/zeus_domino_policy_value_v1.bin
+Formato: ZEUSNN01, entrada 89, oculta 128, policy 84, value 4.
+Entrenamiento guardado en checkpoint: 7,168 encuentros completos.
+El CSV puede incluir una fila posterior (7,424) porque el proceso fue interrumpido antes de guardar ese checkpoint; el modelo exportado corresponde al último checkpoint completo: 7,168.
+Dispositivo de entrenamiento: CPU, PyTorch 2.10.0+cpu, sin CUDA.
+Reglas usadas por el entrenador: doble-seis, 7 por jugador, sin robo, partida hasta 100 puntos, ganador de la ronda abre la siguiente; puntuación de tranca configurada como loser_pips.
+
+IMPORTANTE:
+- Este es un modelo entrenado de prueba avanzada, NO un modelo certificado ni validado como superior a ZEUS 0.10 o a humanos expertos.
+- No se ejecutó el objetivo de un millón de encuentros. El entrenador quedó preparado para continuar mediante --resume.
+- La cabeza de predicción de encuentro se entrena con el resultado de la partida, pero el vector de 89 entradas no contiene el marcador acumulado visible en pantalla. Por ello todavía no adapta su política al marcador 90-40 frente a 40-90.
+- Antes de declarar definitiva la política de puntuación de tranca, confirmar que la aplicación objetivo realmente entrega los puntos de la mano perdedora.
